@@ -1,0 +1,13 @@
+{
+  "name": "task-management-api",
+  "version": "1.0.0",
+  "description": "This is a Task management REST API build with Node.js for learning purpose",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
