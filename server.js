@@ -28,43 +28,89 @@ function createTask(req,res) {
     data = JSON.parse(body)
   } catch  {
     res.statusCode = 400
-    res.end('Invalid JSON')
+    res.end(JSON.stringify({
+        error: 'Invalid JSON'
+    }))
     return
 }
   if (typeof(data.title) !== 'string') {
         res.statusCode = 400
-        res.end('Incorrcet data type require string')
+        res.end(JSON.stringify({
+            error: 'Incorrcet data type require string'
+        }))
         return
     }  
+  if (data.title.trim() === '') {
+        res.statusCode = 400
+        res.end(JSON.stringify({
+            error: 'Title connot be empty'
+        }))
+        return
+    }  
+  if (Object.hasOwn(data , 'description')){
   if (typeof(data.description) !== 'string') {
         res.statusCode = 400
-        res.end('Incorrcet data type require string')
+        res.end(JSON.stringify({
+            error: 'Incorrcet data type require string'
+        }))
         return
 
-  }
+  }}
 // console.log(data.dueDate);
 // console.log(isValidDate(data.dueDate));
-  if(!isValidDate(data.dueDate)){
-    res.statusCode = 400
+
+if (
+    data.dueDate !== undefined &&
+    data.dueDate !== null &&
+    !isValidDate(data.dueDate)
+) {
+    res.statusCode = 400;
     res.end(JSON.stringify({
         error: 'Invalid dueDate'
+    }));
+    return;
+}
+//   if(!isValidDate(data.dueDate)){
+//     res.statusCode = 400
+//     res.end(JSON.stringify({
+//         error: 'Invalid dueDate'
 
-    }))
-    return
-  }
+//     }))
+//     return
+//   }
+
+    const allowedStatuses = ['pending', 'in-progress', 'completed'];
+
+    if (
+        Object.hasOwn(data, 'status') &&
+        !allowedStatuses.includes(data.status)
+    ) {
+        res.statusCode = 400;
+
+        res.end(JSON.stringify({
+            error: 'Invalid status'
+        }));
+
+        return;
+    }
+
+    const status = Object.hasOwn(data, 'status')
+        ? data.status
+        : 'pending';
+
   const now = new Date().toISOString()
   const currentTask = {
     id: randomUUID(),
     title: data.title,
-    description: data.description,
-    status: data.status,
-    dueDate: data.dueDate,
+    description: data.description ?? '',
+    status: status,
+    dueDate: data.dueDate ?? null,
     createdAt: now,
     updatedAt :now
   }
   storage.push(currentTask)
   
-
+  
 //   tasks.push(currentTask)
   res.statusCode = 201
   res.setHeader('Content-Type','application/json')
@@ -85,19 +131,35 @@ function modifyTask(req,res) {
     })
     req.on('end' ,()=>{
         let data;
-
+        
         try {
             data = JSON.parse(body);
         } catch {
             res.statusCode = 400;
-            res.end('Invalid JSON');
+            res.end(JSON.stringify({
+                error: 'Invalid JSON'
+            }));
             return;
+        }
+        if (
+            data === null ||
+            typeof data !== 'object' ||
+            Array.isArray(data) ||
+            Object.keys(data).length === 0
+        ) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({
+                error: 'Empty or invalid update body'
+            }));
+            return
         }
         const feilds = Object.keys(data)
         for(const feild of feilds){
             if (!allowedFields.includes(feild)) {
                 res.statusCode = 400
-                res.end(`Invalid field: ${feild}`)            
+                res.end(JSON.stringify({
+                    error: `Invalid field: ${feild}`
+                }))            
                 return
             }
                 
@@ -105,25 +167,33 @@ function modifyTask(req,res) {
 
             if (Object.hasOwn(data, 'title') && (typeof data.title !== 'string' || data.title.trim() === '')) {
             res.statusCode = 400;
-            res.end('Title must be a string');
+            res.end(JSON.stringify({
+                error: 'Title must be a string'
+            }));
             return;
             }
 
             if (Object.hasOwn(data, 'description') && typeof data.description !== 'string') {
             res.statusCode = 400;
-            res.end('Description must be a string');
+            res.end(JSON.stringify({
+                error: 'Description must be a string'
+            }));
             return;
             }
 
             if (Object.hasOwn(data, 'status') && (typeof data.status !== 'string' || !(data.status === 'pending' || data.status === 'in-progress' || data.status === 'completed') )) {
             res.statusCode = 400;
-            res.end('Status must be pending, in-progress, or completed');
+            res.end(JSON.stringify({
+                error: 'Status must be pending, in-progress, or completed'
+            }));
             return;
             }
 
-            if (Object.hasOwn(data, 'dueDate') && (typeof data.dueDate !== 'string' || !isValidDate(data.dueDate))) {
+            if (Object.hasOwn(data, 'dueDate') && data.dueDate !==  null  &&(typeof data.dueDate !== 'string' || !isValidDate(data.dueDate))) {
             res.statusCode = 400;
-            res.end('Due date must be a string');
+            res.end(JSON.stringify({
+                error: 'Invalid due date'
+            }));
             return
             }
                     
@@ -132,7 +202,9 @@ function modifyTask(req,res) {
 
             if (!task) {
                 res.statusCode = 404
-                res.end('Task Not Found')
+                res.end(JSON.stringify({
+                    error: 'Task Not Found'
+                }))
                 return
             }
 
@@ -179,7 +251,9 @@ function deleteTask(req,res) {
       return
     }
     res.statusCode = 404
-    res.end('Task Not Found')
+    res.end(JSON.stringify({
+        error: 'Task Not Found'
+    }))
     return
 
 
@@ -203,7 +277,9 @@ function getTask(req,res) {
         return
     }
     res.statusCode = 404
-    res.end('Not Found')
+    res.end(JSON.stringify({
+        error : 'Not Found'
+    }))
     return
 }
 
@@ -242,10 +318,9 @@ const http = require('http')
 const server = http.createServer((req,res)=>{
 const url = new URL(req.url, `http://${req.headers.host}`);
 const pathname = url.pathname;
+let pathExists = false;
 
 for (const route of routes) {
-    if (route.method !== req.method) continue;
-
     const routeParts = route.path.split('/');
     const requestParts = pathname.split('/');
 
@@ -263,15 +338,30 @@ for (const route of routes) {
         }
     }
 
-    if (matched) {
-        req.params = params;
-        route.handler(req, res);
-        return;
-    }  
+    if (!matched) continue;
+
+    pathExists = true;
+
+    if (route.method !== req.method) continue;
+
+    req.params = params;
+    route.handler(req, res);
+    return;
+}
+
+if (pathExists) {
+    res.statusCode = 405;
+    res.setHeader('Allow', 'GET, POST, PATCH, DELETE');
+    res.end(JSON.stringify({
+        error: 'Method Not Allowed'
+    }));
+    return;
 }
 
 res.statusCode = 404;
-res.end('Route not found');
+res.end(JSON.stringify({
+    error: 'Route not found'
+}));
 })
 
 server.listen(3000,()=>{
