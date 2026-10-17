@@ -16,7 +16,7 @@ function createTask(req, res) {
         body += chunk;
     });
 
-    req.on('end', () => {
+    req.on('end', async () => {
         let data;
 
         try {
@@ -103,23 +103,47 @@ function createTask(req, res) {
             return;
         }
 
-    
-        const currentTask = createTaskService(data);
+        try {
+            const currentTask = await createTaskService(data);
 
-   
-        res.statusCode = 201;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(currentTask));
+
+            res.statusCode = 201;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(currentTask));
+        } catch (error) {
+            console.error('Failed to create the task :' ,error)
+
+
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+               error: 'Internal server error' 
+            }))
+            
+        }
+
     });
 }
 
 
-function getTaskList(req,res) {
-    const tasks = getAllTasks()
-    res.statusCode = 200
-    res.setHeader('Content-Type','application/json')
-    res.end(JSON.stringify(tasks))
+async function getTaskList(req,res) {
+    try {
+        const tasks = await getAllTasks()
+        res.statusCode = 200
+        res.setHeader('Content-Type','application/json')
+        res.end(JSON.stringify(tasks))
+        
+    } catch (error) {
+            console.error('Failed to retrieve tasks:' ,error)
 
+
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+               error: 'Internal server error' 
+            }))
+    }
+    
 }
 
 
@@ -131,7 +155,7 @@ function modifyTask(req,res) {
     req.on('data',chunk =>{
         body += chunk
     })
-    req.on('end' ,()=>{
+    req.on('end' ,async ()=>{
         let data;
         
         try {
@@ -198,9 +222,8 @@ function modifyTask(req,res) {
             }));
             return
             }
-                    
-        const task = updateTask(req.params.id, data);
-
+        try {
+            const task = await updateTask(req.params.id, data);
         if (!task) {
             res.statusCode = 404;
             res.end(JSON.stringify({
@@ -212,6 +235,22 @@ function modifyTask(req,res) {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(task));
+            
+
+
+        } catch (error) {
+            console.error('Failed to update task:' ,error)
+
+
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({
+               error: 'Internal server error' 
+            }))
+        }
+        
+
+
 
     })
 
@@ -223,49 +262,69 @@ function modifyTask(req,res) {
 
 
 
-function deleteTask(req,res) {
-    const deleted = deleteTaskService(req.params.id);
-    if (!deleted) {
-        res.statusCode = 404;
-        res.end(JSON.stringify({
-            error: 'Task Not Found'
-        }));
-        return;
-    }
+async function deleteTask(req,res) {
+    try {
+        const deleted = await deleteTaskService(req.params.id);
+        if (deleted) {
+            
+            res.statusCode = 204;
+            res.end();
+            
+        } else {
+            res.statusCode = 404
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({
+                error: 'Task Not Found'
+            }))
+        }    
+    } catch (error) {
+            console.error('Failed to delete task:' ,error)
 
-    res.statusCode = 204;
-    res.end();
+
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({
+                error: 'Internal Server Error'
+            }))
+    
+    
 
 
 
 
 }
+}
 
 
 
 
-
-function getTask(req,res) {
-    
+async function getTask(req,res) {
     const taskId = req.params.id
     
-    const task = getTaskService(taskId)
-
+    try {
+        const task = await getTaskService(taskId)
     if (task) {
         res.statusCode = 200
         res.setHeader('Content-Type', 'application/json')
         res.end(JSON.stringify(task))
         return
     }
-
     res.statusCode = 404
     res.end(JSON.stringify({
         error: 'Not Found'
     }))
-    return
+
+    } catch (error) {
+            console.error('Failed to retrive task:' ,error)
 
 
-
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({
+                error: 'Internal Server Error'
+            }))      
+    }
+    
 }
 
 module.exports = {
