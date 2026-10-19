@@ -1,3 +1,5 @@
+const { log } = require('console');
+const redisClient = require('./redis');
 const { routes } = require('./routes/taskRoutes');
 
 
@@ -55,10 +57,28 @@ res.end(JSON.stringify({
 }));
 })
 
-server.listen(3000,()=>{
-    console.log('server is running on port 3000');
-    
-})
+
+async function startServer() {
+    try {
+        await redisClient.connect()
+        console.log('Redis connnceted sucessfully');
+        
+    } catch (err) {
+        console.error(
+            'Redis unavailable; starting without cache:',err.message)
+
+    }
+    server.listen(3000,()=>{
+        console.log('server is running on port 3000');
+        
+    })
+
+
+
+}
+
+startServer()
+
 
 
 

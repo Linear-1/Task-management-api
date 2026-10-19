@@ -12,6 +12,7 @@
   "type": "commonjs",
   "dependencies": {
     "dotenv": "^18.0.8",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "redis": "^6.3.0"
   }
 }
