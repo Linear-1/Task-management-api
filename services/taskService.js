@@ -3,12 +3,24 @@ const { getAllTasksFromDB } = require("../repositories/taskRepository");
 const { deleteTaskFromDB } = require("../repositories/taskRepository");
 const { getTaskFromDB } = require("../repositories/taskRepository");
 const { upadtingTask } = require("../repositories/taskRepository");
+const { scheduleReminder } = require('../queues/taskReminderQueue');
+const { getReminderTimestamp } = require('../utils/getReminderTimestamp');
+
 const redisClient = require('../redis');
 
 
 
-function createTask(data) {
-    return  createTaskInDB(data)
+async function createTask(data) {
+    const task = await createTaskInDB(data)
+    const reminderTimestamp = getReminderTimestamp(task.dueDate)
+
+    await scheduleReminder(task.id, reminderTimestamp)
+
+    return task
+
+
+
+
 }
 
 
@@ -21,16 +33,22 @@ function getAllTasks() {
 
 
 async function updateTask(taskId, data) {
-
-    const updateedTask =  upadtingTask(taskId,data)
-    if (upadtingTask && redisClient.isReady) {
+    const oldTask = await getTaskFromDB(taskId)
+    const updateedTask =  await upadtingTask(taskId,data)
+    if (updateedTask && redisClient.isReady) {
         try {
             await redisClient.del(`task:${taskId}`)
             console.log(`Cache invalidated: task:${taskId}`);
             
         } catch (error) {
-            console.error('Redis cache invalidation failed:', err.message);
+            console.error('Redis cache invalidation failed:', error.message);
         }
+    }
+
+    if (oldTask && updateedTask && oldTask.dueDate !== updateedTask.dueDate) {
+        const reminderTimestamp = getReminderTimestamp(updateedTask.dueDate)
+        await scheduleReminder(taskId,reminderTimestamp)
+        console.log(`Reminder rescheduled for task:${taskId}`);
     }
 
     return updateedTask

@@ -13,7 +13,27 @@ async function scheduleReminder(taskId,scheduleReminderstamp) {
     ]);
 };
 
+async function getDueJobs() {
+    const now  = Date.now()
+
+    return await redisClient.zRangeByScore(
+        QUEUE_KEY,
+        0,
+        now,
+        {
+            LIMIT: {
+                offset: 0,
+                count: 1
+            }
+        }
+    )
+}
+async function ACKforJob(job) {
+    await redisClient.zRem(QUEUE_KEY,job)
+}
 
 module.exports = {
-    scheduleReminder
+    scheduleReminder,
+    getDueJobs,
+    ACKforJob
 }
