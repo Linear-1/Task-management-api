@@ -143,3 +143,4 @@ node_modules/
 
 # test
 test-db.js
+tests/
