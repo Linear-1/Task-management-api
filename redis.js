@@ -1,8 +1,13 @@
-
 const { createClient } = require('redis');
+const config = require("./config");
+
+
+
 
 const redisClient = createClient({
-    url: 'redis://localhost:6379',
+    url: config.redisURL,
+
+    
     socket: {
         reconnectStrategy: (retries) => {
             if (retries >= 3) {

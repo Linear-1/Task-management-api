@@ -1,7 +1,7 @@
-const { log } = require('console');
 const redisClient = require('./redis');
 const { routes } = require('./routes/taskRoutes');
-
+const config = require("./config");
+const pool = require('./db');
 
 
 
@@ -60,6 +60,17 @@ res.end(JSON.stringify({
 
 async function startServer() {
     try {
+        await pool.query('SELECT 1')
+        console.log('PostgreSQL connected successfully');
+    } catch (error) {
+        console.error('PostgreSQL connection failed:' ,error.message)
+        process.exitCode = 1
+        return
+    }
+
+
+
+    try {
         await redisClient.connect()
         console.log('Redis connnceted sucessfully');
         
@@ -68,8 +79,8 @@ async function startServer() {
             'Redis unavailable; starting without cache:',err.message)
 
     }
-    server.listen(3000,()=>{
-        console.log('server is running on port 3000');
+    server.listen(config.port,()=>{
+        console.log(`server is running on port ${config.port} `);
         
     })
 
