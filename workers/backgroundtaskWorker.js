@@ -1,7 +1,7 @@
 const redisClient = require('../redis');
 const { getDueJobs,ACKforJob } = require('../queues/taskReminderQueue')
-const { getTask } = require('../services/taskService');
 const { getTaskFromDB } = require('../repositories/taskRepository');
+const pool = require('../db');
 
 async function ProcessJob() {
 
@@ -20,7 +20,7 @@ async function ProcessJob() {
                 await ACKforJob(job)
                 continue
             }
-            console.log(`Reminder is due for ${job}`);
+            console.log(`${job} is due`);
             await ACKforJob(job)
         }
     } catch (error) {
@@ -29,15 +29,85 @@ async function ProcessJob() {
     }
 }
 
+
+let stopping = false
+let timer
+let stopTimer
+let currentJob
 async function startWorker() {
     if (!redisClient.isOpen) {
         await redisClient.connect();
     }
 
     console.log('Reminder worker connected to Redis');
+while (!stopping) {
+    currentJob = ProcessJob();
+    await currentJob;
+    currentJob = null;
 
-    await ProcessJob();
-    setInterval(ProcessJob, 30_000);
+    if (!stopping) {
+        await new Promise(resolve => {
+            stopTimer = resolve;
+            timer = setTimeout(resolve, 10_000);
+        });
+
+        stopTimer = null;
+        timer = null;
+    }
+}
 }
 
-startWorker().catch(console.error);
+
+
+
+async function stopWorker() {
+    stopping = true;
+
+    clearTimeout(timer);
+    stopTimer?.()
+
+    if (currentJob) {
+        await currentJob;
+    }
+    
+    console.log('Worker stopped');
+}
+
+
+
+
+let shuttingDown = false
+async function shutDown() {
+    if (shuttingDown) return
+    shuttingDown = true
+
+    console.log('Shutting down worker...');
+    
+    const shutdownTimer = setTimeout(()=>{
+        console.error('Worker shutdown timed out. Forcing exit.')
+        process.exit(1)
+
+    },10_000)
+
+    try {
+        await stopWorker()
+
+        if (redisClient.isOpen) {
+            await redisClient.quit()
+        }
+
+        await pool.end()
+        clearTimeout(shutdownTimer)
+        console.log('Worker shutdown complete.');
+    } catch (error) {
+        console.error('Worker shutdown error:', error);
+        process.exitCode = 1;
+    }
+}
+process.on('SIGINT', shutDown);
+process.on('SIGTERM', shutDown);
+
+startWorker().catch(error => {
+    console.error('Worker failed to start:', error);
+    process.exitCode = 1;
+});

@@ -69,7 +69,6 @@ async function startServer() {
     }
 
 
-
     try {
         await redisClient.connect()
         console.log('Redis connnceted sucessfully');
@@ -79,6 +78,10 @@ async function startServer() {
             'Redis unavailable; starting without cache:',err.message)
 
     }
+
+
+
+
     server.listen(config.port,()=>{
         console.log(`server is running on port ${config.port} `);
         
@@ -86,11 +89,44 @@ async function startServer() {
 
 
 
+
 }
 
 startServer()
 
+    
+    function shutdown() {
+        console.log("CLoseing Server");
+        const shutdownTimer = setTimeout(() => {
+            console.error("Shutdown timed out. Forcing exit.");
+            process.exit(1);
+        }, 10_000);
+        server.close(async ()=>{
+            try {
+                await pool.end()
+                
+                if (redisClient.isOpen) {
+                    await redisClient.quit()
+                }
+                
+                clearTimeout(shutdownTimer)
+                console.log("All connection closed.")
+                
+                
 
+            } catch (error) {
+                
+                console.error('Shutdown Error:' , error)
+                process.exit = 1 
+            }
+     
+      
+            
+        })
+    }
+
+    process.on('SIGINT', shutdown)
+    process.on('SIGTERM', shutdown)
 
 
 

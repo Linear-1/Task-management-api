@@ -30,6 +30,7 @@ async function getDueJobs() {
 }
 async function ACKforJob(job) {
     await redisClient.zRem(QUEUE_KEY,job)
+    
 }
 
 module.exports = {
